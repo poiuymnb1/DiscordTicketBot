@@ -98,7 +98,7 @@ from logging.handlers import RotatingFileHandler
 
 # Настройка логирования в файл
 file_handler = RotatingFileHandler(
-    "universe_bot.log",
+    "discord_ticket_bot.log",
     maxBytes=5 * 1024 * 1024,  # 5 MB
     backupCount=5,
     encoding="utf-8"
@@ -214,7 +214,7 @@ DiscordTicketBot/
 ### Пример DATABASE_URL
 
 ```
-postgresql://user:password@localhost:5432/universebot
+postgresql://user:password@localhost:5432/discordticketbot
 ```
 
 ### Docker переменные
@@ -345,7 +345,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 
 file_handler = RotatingFileHandler(
-    "universe_bot.log",
+    "discord_ticket_bot.log",
     maxBytes=5 * 1024 * 1024,  # 5 MB
     backupCount=5,
     encoding="utf-8"
@@ -541,7 +541,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 
 file_handler = RotatingFileHandler(
-    "universe_bot.log",
+    "discord_ticket_bot.log",
     maxBytes=5 * 1024 * 1024,  # 5 MB
     backupCount=5,
     encoding="utf-8"

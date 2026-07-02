@@ -548,7 +548,7 @@ def generate_html(
 </div>
 
 <div class="footer">
-  Транскрипт сгенерирован {_fmt_time(closed_at)} &nbsp;·&nbsp; Universe Family | GTA 5 RP
+  Транскрипт сгенерирован {_fmt_time(closed_at)} &nbsp;·&nbsp; Discord Ticket Bot
 </div>
 
 </body>

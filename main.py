@@ -1,6 +1,7 @@
 """Главный файл бота - мульти-сервер, мульти-система тикетов."""
 import logging
 import sys
+import os
 
 import discord
 from discord.ext import commands
@@ -12,6 +13,30 @@ from models import TicketSystem, Ticket
 from views import TicketCreateView, TicketCloseView
 from transcript import generate_html
 from utils import ticket_rate_limiter, sanitize_text
+
+# Настройка прокси для обхода блокировки Discord
+# Добавьте в .env: PROXY_URL=socks5://user:pass@host:port или http://host:port
+PROXY_URL = os.getenv("PROXY_URL", "")
+if PROXY_URL:
+    try:
+        from discord.http import Route
+        import aiohttp
+        from python_socks.async_.asyncio.v2 import Proxy
+        
+        logger_proxy = logging.getLogger("discord.http")
+        logger_proxy.info(f"🌐 Используется прокси: {PROXY_URL[:20]}...")
+        
+        # Патчим сессию aiohttp для использования прокси
+        original_connector = aiohttp.TCPConnector
+        
+        class ProxyConnector:
+            def __init__(self, *args, **kwargs):
+                self.proxy = Proxy.from_url(PROXY_URL)
+            
+            async def connect(self, host, port, *args, **kwargs):
+                return await self.proxy.connect(dest_host=host, dest_port=port)
+    except ImportError:
+        logging.warning("⚠️ Для прокси установите: pip install python-socks[asyncio] aiohttp")
 
 # Настройка логирования
 logging.basicConfig(

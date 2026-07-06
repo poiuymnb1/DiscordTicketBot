@@ -10,6 +10,7 @@ class Config:
     TOKEN: str = os.getenv("DISCORD_TOKEN", "")
     DATABASE_URL: str = os.getenv("DATABASE_URL", "")
     COMMAND_PREFIX: str = os.getenv("COMMAND_PREFIX", "!")
+    PROXY_URL: str = os.getenv("PROXY_URL", "")  # socks5://host:port или http://host:port
 
     @classmethod
     def validate(cls) -> list[str]:

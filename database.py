@@ -10,9 +10,32 @@ _pool: Optional[asyncpg.Pool] = None
 async def init(dsn: str) -> None:
     """Инициализирует пул соединений и создаёт таблицы."""
     global _pool
-    _pool = await asyncpg.create_pool(dsn=dsn, min_size=1, max_size=10)
-    await _create_tables()
-    print("✅ Подключение к PostgreSQL установлено")
+    
+    # Для Supabase и других облачных БД нужен SSL
+    import ssl
+    
+    ssl_context = ssl.create_default_context()
+    ssl_context.check_hostname = False
+    ssl_context.verify_mode = ssl.CERT_NONE
+    
+    # Выводим информацию для отладки (без пароля)
+    from urllib.parse import urlparse
+    parsed = urlparse(dsn)
+    safe_dsn = f"{parsed.scheme}://{parsed.username}:***@{parsed.hostname}:{parsed.port}{parsed.path}"
+    print(f"🔗 Подключение к БД: {safe_dsn}")
+    
+    try:
+        _pool = await asyncpg.create_pool(
+            dsn=dsn,
+            min_size=1,
+            max_size=10,
+            ssl=ssl_context
+        )
+        await _create_tables()
+        print("✅ Подключение к PostgreSQL установлено")
+    except Exception as e:
+        print(f"❌ Ошибка подключения к БД: {type(e).__name__}: {e}")
+        raise
 
 
 def pool() -> asyncpg.Pool:

@@ -1,20 +1,20 @@
-"""Генератор HTML транскриптов для тикетов."""
+"""HTML transcript generator for tickets."""
 import html
 import discord
 from datetime import datetime, timezone
 
 
-# Метки для системных сообщений бота
+# Labels for bot system messages
 _BOT_SYSTEM_LABELS = {
-    "ticket:welcome": "Приветственное сообщение бота",
-    "ticket:closed":  "Сообщение о закрытии тикета",
+    "ticket:welcome": "Bot welcome message",
+    "ticket:closed":  "Ticket closure message",
 }
 
 _IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp"}
 
 
 def _fmt_time(dt: datetime) -> str:
-    """Форматирует datetime в читаемую строку (UTC+0, можно подстроить)."""
+    """Format datetime to readable string (UTC+0, can be adjusted)."""
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=timezone.utc)
     return dt.strftime("%d.%m.%Y %H:%M:%S UTC")
@@ -27,9 +27,9 @@ def _is_image_url(url: str) -> bool:
 
 def _clean_url(url: str) -> str:
     """
-    Убирает из Discord CDN URL параметры format= и quality=,
-    которые превращают гифки в статичные webp.
-    Оставляет только параметры авторизации (ex=, is=, hm=).
+    Remove format= and quality= parameters from Discord CDN URL
+    that turn GIFs into static webp.
+    Keep only authorization parameters (ex=, is=, hm=).
     """
     if "?" not in url:
         return url
@@ -45,7 +45,7 @@ def _esc(text: str) -> str:
 
 
 def _render_attachment(attachment: discord.Attachment) -> str:
-    """Рендерит вложение: картинку/гифку или ссылку на файл."""
+    """Render attachment: image/gif or file link."""
     if _is_image_url(attachment.url):
         # Для отображения чистим URL от параметров format=webp/quality= (ломают гифки)
         display_url = _clean_url(attachment.url)
@@ -73,7 +73,7 @@ def _render_attachment(attachment: discord.Attachment) -> str:
 
 
 def _render_embed(embed: discord.Embed) -> str:
-    """Рендерит Discord embed."""
+    """Render Discord embed."""
     color = f"#{embed.color.value:06x}" if embed.color else "#2b2d31"
     parts = [f'<div class="embed" style="border-left-color:{color}">']
 

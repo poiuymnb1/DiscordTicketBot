@@ -29,7 +29,27 @@
    - Scopes: `bot`, `applications.commands`
    - Permissions: `Manage Channels`, `View Channels`, `Send Messages`, `Embed Links`, `Read Message History`, `Attach Files`, `Manage Roles`
 
-### 2. Запуск
+### 2. Запуск через Docker (рекомендуется для хостинга)
+
+```bash
+# Клонируйте репозиторий
+git clone https://github.com/your-repo/DiscordTicketBot.git
+cd DiscordTicketBot
+
+# Создайте .env файл
+# ВАЖНО: Для Docker используйте 'db' как хост в DATABASE_URL
+cat > .env << EOF
+DISCORD_TOKEN=ваш_токен_бота
+DATABASE_URL=postgresql://postgres:changeme@db:5432/discordticketbot
+DB_PASSWORD=changeme
+COMMAND_PREFIX=!
+EOF
+
+# Запуск
+docker-compose up -d --build
+```
+
+### 3. Локальный запуск (без Docker)
 
 ```bash
 # Клонируйте репозиторий
@@ -39,7 +59,13 @@ cd DiscordTicketBot
 # Скопируйте конфиг
 cp .env.example .env
 
-# Отредактируйте .env — заполните DISCORD_TOKEN и DATABASE_URL
+# Отредактируйте .env:
+# - DISCORD_TOKEN=ваш_токен
+# - DATABASE_URL=postgresql://user:password@localhost:5432/discordticketbot
+
+# Убедитесь, что PostgreSQL запущен
+# Создайте базу данных:
+# sudo -u postgres psql -c "CREATE DATABASE discordticketbot;"
 
 # Установка зависимостей
 pip install -r requirements.txt

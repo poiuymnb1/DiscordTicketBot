@@ -1,4 +1,4 @@
-"""Датаклассы для работы с данными из БД."""
+"""Dataclasses for database models."""
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Optional
@@ -56,16 +56,16 @@ class TicketSystem:
 
     def is_configured(self) -> tuple[bool, list[str]]:
         """
-        Проверяет готова ли система к публикации.
-        Возвращает (ok, список проблем).
+        Check if system is ready for publishing.
+        Returns (ok, list of issues).
         """
         issues = []
         if not self.channel_id:
-            issues.append("не задан канал для кнопки (`/ticket set-channel`)")
+            issues.append("channel not set (`/ticket set-channel`)")
         if not self.category_id:
-            issues.append("не задана категория для тикетов (`/ticket set-category`)")
+            issues.append("category not set (`/ticket set-category`)")
         if not self.admin_role_ids:
-            issues.append("не заданы роли модераторов (`/ticket set-roles`)")
+            issues.append("moderator roles not set (`/ticket set-roles`)")
         return (len(issues) == 0, issues)
 
 

@@ -1,4 +1,4 @@
-"""Discord UI Views — кнопки привязаны к конкретной тикетной системе через custom_id."""
+"""Discord UI Views - buttons are tied to specific ticket system via custom_id."""
 import discord
 from discord.ui import View, Button, button, Modal, TextInput
 from discord import Embed
@@ -10,10 +10,10 @@ if TYPE_CHECKING:
 
 class TicketCreateView(View):
     """
-    Persistent view с кнопкой 'Создать тикет'.
-    custom_id формата: ticket:create:{system_id}
-    Благодаря system_id в custom_id бот после рестарта знает
-    к какой системе относится кнопка.
+    Persistent view with 'Create Ticket' button.
+    custom_id format: ticket:create:{system_id}
+    Thanks to system_id in custom_id, the bot knows after restart
+    which system the button belongs to.
     """
 
     def __init__(self, bot: "TicketBot", system_id: int):
@@ -21,9 +21,9 @@ class TicketCreateView(View):
         self.bot = bot
         self.system_id = system_id
 
-        # Добавляем кнопку вручную чтобы передать динамический custom_id
+        # Add button manually to pass dynamic custom_id
         btn = Button(
-            label="🎫 Создать тикет",
+            label="🎫 Create Ticket",
             style=discord.ButtonStyle.primary,
             custom_id=f"ticket:create:{system_id}",
         )
@@ -36,8 +36,8 @@ class TicketCreateView(View):
 
 class TicketCloseView(View):
     """
-    Persistent view с кнопкой 'Закрыть тикет'.
-    custom_id формата: ticket:close:{system_id}
+    Persistent view with 'Close Ticket' button.
+    custom_id format: ticket:close:{system_id}
     """
 
     def __init__(self, bot: "TicketBot", system_id: int, ticket_owner_id: int):
@@ -47,7 +47,7 @@ class TicketCloseView(View):
         self.ticket_owner_id = ticket_owner_id
 
         btn = Button(
-            label="🔒 Закрыть тикет",
+            label="🔒 Close Ticket",
             style=discord.ButtonStyle.danger,
             custom_id=f"ticket:close:{system_id}",
         )
@@ -58,7 +58,7 @@ class TicketCloseView(View):
         import database
         system = await database.get_system_by_id(self.system_id)
         if not system:
-            await interaction.response.send_message("❌ Система тикетов не найдена.", ephemeral=True)
+            await interaction.response.send_message("❌ Ticket system not found.", ephemeral=True)
             return
 
         is_owner = interaction.user.id == self.ticket_owner_id
@@ -66,21 +66,21 @@ class TicketCloseView(View):
 
         if not (is_owner or is_admin):
             await interaction.response.send_message(
-                "❌ Только создатель тикета или модератор могут закрыть тикет.",
+                "❌ Only ticket creator or moderator can close the ticket.",
                 ephemeral=True
             )
             return
 
         confirm_view = ConfirmCloseView(self.bot, interaction.channel, self.system_id, self.ticket_owner_id)
         await interaction.response.send_message(
-            "Вы уверены, что хотите закрыть тикет?",
+            "Are you sure you want to close the ticket?",
             view=confirm_view,
             ephemeral=True
         )
 
 
 class ConfirmCloseView(View):
-    """Подтверждение закрытия тикета."""
+    """Confirmation for ticket closure."""
 
     def __init__(self, bot: "TicketBot", channel: discord.TextChannel, system_id: int, ticket_owner_id: int):
         super().__init__(timeout=30)
@@ -89,27 +89,27 @@ class ConfirmCloseView(View):
         self.system_id = system_id
         self.ticket_owner_id = ticket_owner_id
 
-    @button(label="✅ Да, закрыть", style=discord.ButtonStyle.danger)
+    @button(label="✅ Yes, close", style=discord.ButtonStyle.danger)
     async def confirm(self, interaction: discord.Interaction, btn: Button):
         import database
         system = await database.get_system_by_id(self.system_id)
         if not system:
-            await interaction.response.send_message("❌ Система не найдена.", ephemeral=True)
+            await interaction.response.send_message("❌ System not found.", ephemeral=True)
             return
 
         is_owner = interaction.user.id == self.ticket_owner_id
         is_admin = any(role.id in system.admin_role_ids for role in interaction.user.roles)
 
         if not (is_owner or is_admin):
-            await interaction.response.send_message("❌ Нет прав.", ephemeral=True)
+            await interaction.response.send_message("❌ No permission.", ephemeral=True)
             return
 
-        await interaction.response.edit_message(content="🔒 Закрытие тикета...", view=None)
+        await interaction.response.edit_message(content="🔒 Closing ticket...", view=None)
         await self.bot.close_ticket(self.channel, interaction.user, system)
 
-    @button(label="❌ Отмена", style=discord.ButtonStyle.secondary)
+    @button(label="❌ Cancel", style=discord.ButtonStyle.secondary)
     async def cancel(self, interaction: discord.Interaction, btn: Button):
-        await interaction.response.edit_message(content="✅ Закрытие отменено.", view=None)
+        await interaction.response.edit_message(content="✅ Closure cancelled.", view=None)
 
     async def on_timeout(self):
         try:
@@ -118,40 +118,40 @@ class ConfirmCloseView(View):
             pass
 
 
-# ── Modal для предпросмотра embed ─────────────────────────────────────────────
+# ── Modal for embed preview ─────────────────────────────────────────────
 
 class EmbedPreviewModal(Modal):
-    """Модальное окно для предпросмотра изменений embed."""
+    """Modal window for embed preview."""
     
     def __init__(self, bot: "TicketBot", system_id: int, title: str, description: str, color: int, footer_text: str, footer_icon_url: str, is_ticket_embed: bool = False):
-        title_text = "Предпросмотр embed тикета" if is_ticket_embed else "Предпросмотр embed с кнопкой"
+        title_text = "Ticket Embed Preview" if is_ticket_embed else "Button Embed Preview"
         super().__init__(title=title_text)
         self.bot = bot
         self.system_id = system_id
         self.is_ticket_embed = is_ticket_embed
         
-        # Отображаемые поля
-        desc_hint = "Описание ({user}, {number})" if is_ticket_embed else "Описание"
-        self.add_item(TextInput(label="Заголовок", default=title, max_length=256, required=True))
+        # Display fields
+        desc_hint = "Description ({user}, {number})" if is_ticket_embed else "Description"
+        self.add_item(TextInput(label="Title", default=title, max_length=256, required=True))
         self.add_item(TextInput(label=desc_hint, default=description, style=discord.TextStyle.paragraph, max_length=4000, required=False))
         hex_color = f"#{color:06x}"
-        self.add_item(TextInput(label="Цвет (HEX)", default=hex_color, max_length=7, required=False))
-        self.add_item(TextInput(label="Текст футера", default=footer_text, max_length=200, required=False))
-        self.add_item(TextInput(label="Иконка футера (HTTPS)", default=footer_icon_url, required=False))
+        self.add_item(TextInput(label="Color (HEX)", default=hex_color, max_length=7, required=False))
+        self.add_item(TextInput(label="Footer Text", default=footer_text, max_length=200, required=False))
+        self.add_item(TextInput(label="Footer Icon (HTTPS)", default=footer_icon_url, required=False))
 
     async def on_submit(self, interaction: discord.Interaction):
-        # Валидация цвета
+        # Color validation
         color_str = self.children[2].value.strip()
         try:
             color = int(color_str.lstrip("#"), 16) if color_str else 2829105
         except ValueError:
-            await interaction.response.send_message("❌ Неверный формат цвета. Используйте HEX (например: #2b2d31)", ephemeral=True)
+            await interaction.response.send_message("❌ Invalid color format. Use HEX (e.g.: #2b2d31)", ephemeral=True)
             return
 
-        # Генерируем embed для предпросмотра
+        # Generate embed for preview
         embed = Embed(
             title=self.children[0].value,
-            description=self.children[1].value or "Описание отсутствует",
+            description=self.children[1].value or "No description",
             color=color,
         )
         embed.set_footer(text=self.children[3].value or "Ticket System")
@@ -174,7 +174,7 @@ class EmbedPreviewModal(Modal):
 
 
 class ConfirmEmbedView(View):
-    """Подтверждение изменений embed."""
+    """Confirmation for embed changes."""
 
     def __init__(
         self,
@@ -203,7 +203,7 @@ class ConfirmEmbedView(View):
         self.show_number = show_number
         self.show_system = show_system
 
-        # Только для embed тикета добавляем кнопки переключения полей
+        # Only for ticket embed add toggle buttons for fields
         if is_ticket_embed:
             creator_style = discord.ButtonStyle.success if show_creator else discord.ButtonStyle.secondary
             number_style = discord.ButtonStyle.success if show_number else discord.ButtonStyle.secondary
@@ -213,10 +213,10 @@ class ConfirmEmbedView(View):
             self.add_item(Button(label=f"🆔 {'✓' if show_number else '✗'}", style=number_style, custom_id="toggle_number"))
             self.add_item(Button(label=f"📂 {'✓' if show_system else '✗'}", style=system_style, custom_id="toggle_system"))
 
-        self.add_item(Button(label="✅ Применить", style=discord.ButtonStyle.success, custom_id="apply"))
+        self.add_item(Button(label="✅ Apply", style=discord.ButtonStyle.success, custom_id="apply"))
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
-        # Обработка переключения кнопок
+        # Handle button toggles
         if interaction.data.get("custom_id") == "toggle_creator":
             self.show_creator = not self.show_creator
             creator_style = discord.ButtonStyle.success if self.show_creator else discord.ButtonStyle.secondary
@@ -257,7 +257,7 @@ class ConfirmEmbedView(View):
         import database
         system = await database.get_system_by_id(self.system_id)
         if not system:
-            await interaction.response.edit_message(content="❌ Система не найдена.", view=None)
+            await interaction.response.edit_message(content="❌ System not found.", view=None)
             return
 
         if self.is_ticket_embed:
@@ -280,10 +280,10 @@ class ConfirmEmbedView(View):
 
         await database.update_system(system.id, **updates)
         await interaction.response.edit_message(
-            content="✅ Embed успешно обновлён!",
+            content="✅ Embed updated successfully!",
             view=None
         )
 
-    @button(label="❌ Отмена", style=discord.ButtonStyle.secondary)
+    @button(label="❌ Cancel", style=discord.ButtonStyle.secondary)
     async def cancel(self, interaction: discord.Interaction, btn: Button):
-        await interaction.response.edit_message(content="❌ Изменения отменены.", view=None)
+        await interaction.response.edit_message(content="❌ Changes cancelled.", view=None)

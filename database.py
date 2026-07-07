@@ -1,4 +1,4 @@
-"""Подключение к PostgreSQL, схема таблиц, CRUD методы."""
+"""PostgreSQL connection, table schema, CRUD methods."""
 import asyncpg
 from typing import Optional
 from models import TicketSystem, Ticket
@@ -8,39 +8,49 @@ _pool: Optional[asyncpg.Pool] = None
 
 
 async def init(dsn: str) -> None:
-    """Инициализирует пул соединений и создаёт таблицы."""
+    """Initialize connection pool and create tables."""
     global _pool
     
-    # Для Supabase и других облачных БД нужен SSL
-    import ssl
-    
-    ssl_context = ssl.create_default_context()
-    ssl_context.check_hostname = False
-    ssl_context.verify_mode = ssl.CERT_NONE
-    
-    # Выводим информацию для отладки (без пароля)
+    # Debug info (without password)
     from urllib.parse import urlparse
     parsed = urlparse(dsn)
     safe_dsn = f"{parsed.scheme}://{parsed.username}:***@{parsed.hostname}:{parsed.port}{parsed.path}"
-    print(f"🔗 Подключение к БД: {safe_dsn}")
+    print(f"🔗 Connecting to DB: {safe_dsn}")
     
     try:
+        # Try without SSL first (for local Docker DB)
         _pool = await asyncpg.create_pool(
             dsn=dsn,
             min_size=1,
             max_size=10,
-            ssl=ssl_context
         )
         await _create_tables()
-        print("✅ Подключение к PostgreSQL установлено")
+        print("✅ PostgreSQL connection established")
     except Exception as e:
-        print(f"❌ Ошибка подключения к БД: {type(e).__name__}: {e}")
-        raise
+        print(f"❌ Connection error: {type(e).__name__}: {e}")
+        # Try with SSL (for cloud DBs like Supabase, Neon, etc.)
+        try:
+            import ssl
+            ssl_context = ssl.create_default_context()
+            ssl_context.check_hostname = False
+            ssl_context.verify_mode = ssl.CERT_NONE
+            
+            _pool = await asyncpg.create_pool(
+                dsn=dsn,
+                min_size=1,
+                max_size=10,
+                ssl=ssl_context
+            )
+            await _create_tables()
+            print("✅ PostgreSQL connection established (via SSL)")
+        except Exception as e2:
+            print(f"❌ SSL connection error: {type(e2).__name__}: {e2}")
+            raise
 
 
 def pool() -> asyncpg.Pool:
     if _pool is None:
-        raise RuntimeError("БД не инициализирована — вызовите database.init() первым")
+        raise RuntimeError("Database not initialized - call database.init() first")
     return _pool
 
 
@@ -49,7 +59,7 @@ async def close() -> None:
         await _pool.close()
 
 
-# ── Схема ─────────────────────────────────────────────────────────────────────
+# ── Schema ─────────────────────────────────────────────────────────────────────
 
 async def _create_tables() -> None:
     async with pool().acquire() as conn:
@@ -64,13 +74,13 @@ async def _create_tables() -> None:
                 transcript_channel_id BIGINT,
                 admin_role_ids        BIGINT[] NOT NULL DEFAULT '{}',
                 channel_prefix        TEXT   NOT NULL DEFAULT 'ticket',
-                embed_title           TEXT   NOT NULL DEFAULT '🎫 Создать тикет',
-                embed_description     TEXT   NOT NULL DEFAULT 'Нажмите кнопку ниже, чтобы создать тикет.',
+                embed_title           TEXT   NOT NULL DEFAULT '🎫 Create Ticket',
+                embed_description     TEXT   NOT NULL DEFAULT 'Click the button below to create a ticket.',
                 embed_color           INT    NOT NULL DEFAULT 2829105,
                 footer_text           TEXT    NOT NULL DEFAULT 'Ticket System',
                 footer_icon_url       TEXT    NOT NULL DEFAULT '',
-                ticket_embed_title    TEXT    NOT NULL DEFAULT '🎫 Тикет #{number}',
-                ticket_embed_desc     TEXT    NOT NULL DEFAULT '{user.mention}, ваш тикет создан!\n\nОпишите ваш вопрос.',
+                ticket_embed_title    TEXT    NOT NULL DEFAULT '🎫 Ticket #{number}',
+                ticket_embed_desc     TEXT    NOT NULL DEFAULT '{user.mention}, your ticket has been created!\n\nPlease describe your issue.',
                 ticket_embed_color    INT     NOT NULL DEFAULT 2829105,
                 ticket_counter        INT     NOT NULL DEFAULT 0,
                 UNIQUE (guild_id, name)
@@ -99,7 +109,7 @@ async def _create_tables() -> None:
 # ── TicketSystem CRUD ──────────────────────────────────────────────────────────
 
 async def create_system(guild_id: int, name: str) -> TicketSystem:
-    """Создаёт новую тикетную систему с дефолтными настройками."""
+    """Create a new ticket system with default settings."""
     async with pool().acquire() as conn:
         row = await conn.fetchrow("""
             INSERT INTO ticket_systems (guild_id, name)
@@ -110,7 +120,7 @@ async def create_system(guild_id: int, name: str) -> TicketSystem:
 
 
 async def get_system(guild_id: int, name: str) -> Optional[TicketSystem]:
-    """Возвращает систему по названию или None."""
+    """Get system by name or None."""
     async with pool().acquire() as conn:
         row = await conn.fetchrow("""
             SELECT * FROM ticket_systems WHERE guild_id=$1 AND name=$2
@@ -127,7 +137,7 @@ async def get_system_by_id(system_id: int) -> Optional[TicketSystem]:
 
 
 async def get_systems(guild_id: int) -> list[TicketSystem]:
-    """Возвращает все системы сервера."""
+    """Get all systems for a guild."""
     async with pool().acquire() as conn:
         rows = await conn.fetch(
             "SELECT * FROM ticket_systems WHERE guild_id=$1 ORDER BY id", guild_id
@@ -136,7 +146,7 @@ async def get_systems(guild_id: int) -> list[TicketSystem]:
 
 
 async def get_all_systems() -> list[TicketSystem]:
-    """Возвращает все системы всех серверов (для регистрации persistent views)."""
+    """Get all systems across all guilds (for registering persistent views)."""
     async with pool().acquire() as conn:
         rows = await conn.fetch("SELECT * FROM ticket_systems ORDER BY id")
     return [TicketSystem.from_row(r) for r in rows]
@@ -144,8 +154,8 @@ async def get_all_systems() -> list[TicketSystem]:
 
 async def update_system(system_id: int, **fields) -> Optional[TicketSystem]:
     """
-    Обновляет произвольные поля системы.
-    Пример: update_system(1, channel_id=123, embed_title="Новый заголовок")
+    Update arbitrary system fields.
+    Example: update_system(1, channel_id=123, embed_title="New Title")
     """
     if not fields:
         return await get_system_by_id(system_id)
@@ -159,7 +169,7 @@ async def update_system(system_id: int, **fields) -> Optional[TicketSystem]:
     }
     invalid = set(fields) - allowed
     if invalid:
-        raise ValueError(f"Недопустимые поля для обновления: {invalid}")
+        raise ValueError(f"Invalid fields for update: {invalid}")
 
     set_clauses = ", ".join(
         f"{col} = ${i + 2}" for i, col in enumerate(fields)
@@ -175,7 +185,7 @@ async def update_system(system_id: int, **fields) -> Optional[TicketSystem]:
 
 
 async def delete_system(guild_id: int, name: str) -> bool:
-    """Удаляет систему (каскадно удаляет все тикеты)."""
+    """Delete system (cascades to delete all tickets)."""
     async with pool().acquire() as conn:
         result = await conn.execute("""
             DELETE FROM ticket_systems WHERE guild_id=$1 AND name=$2
@@ -184,7 +194,7 @@ async def delete_system(guild_id: int, name: str) -> bool:
 
 
 async def increment_counter(system_id: int) -> int:
-    """Атомарно увеличивает счётчик и возвращает новое значение."""
+    """Atomically increment counter and return new value."""
     async with pool().acquire() as conn:
         row = await conn.fetchrow("""
             UPDATE ticket_systems
@@ -222,7 +232,7 @@ async def get_ticket_by_channel(channel_id: int) -> Optional[Ticket]:
 
 
 async def get_open_ticket(system_id: int, owner_id: int) -> Optional[Ticket]:
-    """Возвращает открытый тикет пользователя в данной системе."""
+    """Get user's open ticket in this system."""
     async with pool().acquire() as conn:
         row = await conn.fetchrow("""
             SELECT * FROM tickets
@@ -232,7 +242,7 @@ async def get_open_ticket(system_id: int, owner_id: int) -> Optional[Ticket]:
 
 
 async def close_ticket(channel_id: int, closer_id: int) -> Optional[Ticket]:
-    """Помечает тикет как закрытый."""
+    """Mark ticket as closed."""
     async with pool().acquire() as conn:
         row = await conn.fetchrow("""
             UPDATE tickets
@@ -244,7 +254,7 @@ async def close_ticket(channel_id: int, closer_id: int) -> Optional[Ticket]:
 
 
 async def delete_ticket_by_channel(channel_id: int) -> bool:
-    """Удаляет тикет по ID канала."""
+    """Delete ticket by channel ID."""
     async with pool().acquire() as conn:
         result = await conn.execute(
             "DELETE FROM tickets WHERE channel_id=$1", channel_id
@@ -253,7 +263,7 @@ async def delete_ticket_by_channel(channel_id: int) -> bool:
 
 
 async def update_ticket_channel(channel_id: int, message_id: int) -> Optional[Ticket]:
-    """Обновляет ID сообщения в тикете."""
+    """Update message ID in ticket."""
     async with pool().acquire() as conn:
         row = await conn.fetchrow("""
             UPDATE tickets

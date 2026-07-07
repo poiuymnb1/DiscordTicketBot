@@ -28,13 +28,6 @@ COPY transcript.py .
 COPY config.py .
 COPY utils.py .
 
-# Create non-root user for security AND data directory with correct permissions
-RUN useradd --create-home --shell /bin/bash botuser \
-    && mkdir -p /app/data \
-    && chown -R botuser:botuser /app
-
-USER botuser
-
 # Environment variables
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1

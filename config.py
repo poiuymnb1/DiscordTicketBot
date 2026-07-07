@@ -8,7 +8,7 @@ load_dotenv(override=True)
 
 class Config:
     TOKEN: str = os.getenv("DISCORD_TOKEN", "")
-    DATABASE_URL: str = os.getenv("DATABASE_URL", "")
+    DATABASE_PATH: str = os.getenv("DATABASE_PATH", "data/tickets.db")
     COMMAND_PREFIX: str = os.getenv("COMMAND_PREFIX", "!")
     PROXY_URL: str = os.getenv("PROXY_URL", "")  # socks5://host:port or http://host:port
 
@@ -17,6 +17,4 @@ class Config:
         errors = []
         if not cls.TOKEN:
             errors.append("DISCORD_TOKEN not set in .env")
-        if not cls.DATABASE_URL:
-            errors.append("DATABASE_URL not set in .env")
         return errors

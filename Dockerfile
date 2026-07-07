@@ -14,6 +14,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libffi-dev \
     && rm -rf /var/lib/apt/lists/*
 
+# Create data directory for SQLite database
+RUN mkdir -p /app/data
+
 # Copy requirements and install dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
@@ -36,6 +39,7 @@ USER botuser
 # Environment variables
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
+ENV DATABASE_PATH=/app/data/tickets.db
 
 # Run the bot
 CMD ["python", "main.py"]

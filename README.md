@@ -16,6 +16,7 @@
 - **Slash-команды** — полное управление через `/ticket`
 - **Гибкая настройка полей** — показ/скрытие создателя, номера, системы
 - **Rate Limiting** — защита от спама тикетов
+- **SQLite** — не требует отдельного сервера базы данных
 
 ---
 
@@ -29,43 +30,17 @@
    - Scopes: `bot`, `applications.commands`
    - Permissions: `Manage Channels`, `View Channels`, `Send Messages`, `Embed Links`, `Read Message History`, `Attach Files`, `Manage Roles`
 
-### 2. Запуск через Docker (рекомендуется для хостинга)
+### 2. Локальный запуск
 
 ```bash
 # Клонируйте репозиторий
-git clone https://github.com/your-repo/DiscordTicketBot.git
-cd DiscordTicketBot
-
-# Создайте .env файл
-# ВАЖНО: Для Docker используйте 'db' как хост в DATABASE_URL
-cat > .env << EOF
-DISCORD_TOKEN=ваш_токен_бота
-DATABASE_URL=postgresql://postgres:changeme@db:5432/discordticketbot
-DB_PASSWORD=changeme
-COMMAND_PREFIX=!
-EOF
-
-# Запуск
-docker-compose up -d --build
-```
-
-### 3. Локальный запуск (без Docker)
-
-```bash
-# Клонируйте репозиторий
-git clone https://github.com/your-repo/DiscordTicketBot.git
+git clone https://github.com/ваш-username/DiscordTicketBot.git
 cd DiscordTicketBot
 
 # Скопируйте конфиг
 cp .env.example .env
 
-# Отредактируйте .env:
-# - DISCORD_TOKEN=ваш_токен
-# - DATABASE_URL=postgresql://user:password@localhost:5432/discordticketbot
-
-# Убедитесь, что PostgreSQL запущен
-# Создайте базу данных:
-# sudo -u postgres psql -c "CREATE DATABASE discordticketbot;"
+# Отредактируйте .env — добавьте DISCORD_TOKEN
 
 # Установка зависимостей
 pip install -r requirements.txt
@@ -74,7 +49,24 @@ pip install -r requirements.txt
 python main.py
 ```
 
-### 3. Настройка тикетной системы
+### 3. Запуск через Docker
+
+```bash
+# Клонируйте репозиторий
+git clone https://github.com/ваш-username/DiscordTicketBot.git
+cd DiscordTicketBot
+
+# Создайте .env файл
+cat > .env << EOF
+DISCORD_TOKEN=ваш_токен_бота
+EOF
+
+# Запуск
+docker build -t discord-ticket-bot .
+docker run -d --name ticket-bot -v ticket-data:/app/data discord-ticket-bot
+```
+
+### 4. Настройка тикетной системы
 
 После запуска бота используйте slash-команды:
 
@@ -87,26 +79,9 @@ python main.py
 
 ---
 
-## 🐳 Docker
-
-```bash
-# Создаём .env из примера и заполняем данные
-cp .env.example .env
-nano .env
-
-# Запуск
-docker-compose up -d --build
-```
-
----
-
 ## 📝 Настройка логов
 
-По умолчанию логи выводятся в консоль. Вы можете настроить вывод в файл или использовать внешние сервисы.
-
-### Консоль (по умолчанию)
-
-Логи уже настроены и выводятся в stdout с timestamp:
+По умолчанию логи выводятся в консоль:
 
 ```
 2024-01-15 10:30:00 | INFO     | __main__ | ✅ Бот запущен: DiscordTicketBot#1234
@@ -122,7 +97,6 @@ docker-compose up -d --build
 import logging
 from logging.handlers import RotatingFileHandler
 
-# Настройка логирования в файл
 file_handler = RotatingFileHandler(
     "discord_ticket_bot.log",
     maxBytes=5 * 1024 * 1024,  # 5 MB
@@ -135,45 +109,7 @@ file_handler.setFormatter(logging.Formatter(
     datefmt="%Y-%m-%d %H:%M:%S"
 ))
 
-# Добавляем обработчик
 logging.getLogger().addHandler(file_handler)
-```
-
-### Уровни логирования
-
-| Уровень | Описание |
-|---------|----------|
-| `DEBUG` | Подробная отладочная информация |
-| `INFO` | Общие информационные сообщения |
-| `WARNING` | Предупреждения (некритичные ошибки) |
-| `ERROR` | Ошибки, влияющие на работу |
-| `CRITICAL` | Критические ошибки |
-
-Изменить уровень:
-
-```python
-logging.getLogger().setLevel(logging.WARNING)  # Только предупреждения и ошибки
-```
-
-### Внешние сервисы (например, Sentry)
-
-```bash
-pip install sentry-sdk
-```
-
-```python
-import sentry_sdk
-from sentry_sdk.integrations.logging import SentryIntegration
-
-sentry_sdk.init(
-    dsn="YOUR_SENTRY_DSN",
-    integrations=[
-        SentryIntegration(
-            level=logging.INFO,
-            event_level=logging.ERROR
-        )
-    ]
-)
 ```
 
 ---
@@ -216,14 +152,13 @@ DiscordTicketBot/
 ├── main.py              # Точка входа, логика бота
 ├── config.py            # Конфигурация через .env
 ├── views.py             # Discord UI (кнопки, модалы)
-├── database.py          # PostgreSQL подключение и методы
+├── database.py          # SQLite подключение и методы
 ├── models.py            # Датаклассы для БД
 ├── commands.py          # Slash-команды /ticket
 ├── transcript.py        # Генератор HTML-транскриптов
 ├── utils.py             # Утилиты (rate limiting)
 ├── requirements.txt     # Зависимости
 ├── Dockerfile           # Docker образ
-├── docker-compose.yml   # Docker Compose с PostgreSQL
 └── .env.example         # Пример конфигурации
 ```
 
@@ -234,29 +169,18 @@ DiscordTicketBot/
 |    Переменная    | Обязательна |              Описание              |
 |------------------|-------------|------------------------------------|
 | `DISCORD_TOKEN`  |     Да      | Токен Discord-бота                 |
-| `DATABASE_URL`   |     Да      | PostgreSQL connection string       |
+| `DATABASE_PATH`  |     Нет     | Путь к БД (по умолчанию: `data/tickets.db`) |
 | `COMMAND_PREFIX` |     Нет     | Префикс команд (по умолчанию: `!`) |
-
-### Пример DATABASE_URL
-
-```
-postgresql://user:password@localhost:5432/discordticketbot
-```
-
-### Docker переменные
-
-| Переменная | По умолчанию | Описание |
-|------------|--------------|----------|
-| `DB_PASSWORD` | changeme | Пароль для PostgreSQL |
+| `PROXY_URL`      |     Нет     | Прокси для обхода блокировок |
 
 ---
 
 ## 🔒 Безопасность
 
-- Используются параметризованные SQL-запросы (защита от SQL-инъекций)
+- Параметризованные SQL-запросы (защита от SQL-инъекций)
 - Rate limiting защищает от спама тикетов
 - Текст очищается от потенциально опасных символов
-- Токен бота и данные БД хранятся в .env (не коммитьте!)
+- Токен бота хранится в .env (не коммитьте!)
 
 ---
 
@@ -264,10 +188,10 @@ postgresql://user:password@localhost:5432/discordticketbot
 
 | Проблема | Решение |
 |----------|---------|
-| Бот не подключается к БД | Проверьте DATABASE_URL и запущен ли PostgreSQL |
+| Бот не запускается | Проверьте DISCORD_TOKEN в .env |
 | Кнопки не работают после рестарта | Проверьте права бота: Manage Channels |
 | Ошибка "Missing Access" | Роль бота должна быть выше ролей модераторов |
-| Транскрипт не отправляется | Проверьте что канал транскриптов существует и бот имеет права |
+| Транскрипт не отправляется | Проверьте что канал транскриптов существует |
 
 ---
 
@@ -295,6 +219,7 @@ Powerful Discord bot for managing ticket systems with support for multiple syste
 - **Slash commands** — full control via `/ticket`
 - **Flexible field settings** — show/hide creator, number, system
 - **Rate Limiting** — spam protection
+- **SQLite** — no separate database server required
 
 ---
 
@@ -308,28 +233,32 @@ Powerful Discord bot for managing ticket systems with support for multiple syste
    - Scopes: `bot`, `applications.commands`
    - Permissions: `Manage Channels`, `View Channels`, `Send Messages`, `Embed Links`, `Read Message History`, `Attach Files`, `Manage Roles`
 
-### 2. Run
+### 2. Run Locally
 
 ```bash
-# Clone the repository
-git clone https://github.com/your-repo/DiscordTicketBot.git
+git clone https://github.com/your-username/DiscordTicketBot.git
 cd DiscordTicketBot
 
-# Copy config
 cp .env.example .env
+# Edit .env — add your DISCORD_TOKEN
 
-# Edit .env — fill DISCORD_TOKEN and DATABASE_URL
-
-# Install dependencies
 pip install -r requirements.txt
-
-# Run
 python main.py
 ```
 
-### 3. Configure Ticket System
+### 3. Docker
 
-After starting the bot, use slash commands:
+```bash
+git clone https://github.com/your-username/DiscordTicketBot.git
+cd DiscordTicketBot
+
+echo "DISCORD_TOKEN=your_token" > .env
+
+docker build -t discord-ticket-bot .
+docker run -d --name ticket-bot -v ticket-data:/app/data discord-ticket-bot
+```
+
+### 4. Configure Ticket System
 
 ```
 /ticket create name:Support
@@ -337,63 +266,6 @@ After starting the bot, use slash commands:
 /ticket set-roles name:Support roles:@Moderator @Admin
 /ticket publish name:Support
 ```
-
----
-
-## 🐳 Docker
-
-```bash
-cp .env.example .env
-nano .env
-docker-compose up -d --build
-```
-
----
-
-## 📝 Logging Configuration
-
-Logs are output to console by default. You can configure file output or use external services.
-
-### Console (default)
-
-```
-2024-01-15 10:30:00 | INFO     | __main__ | ✅ Bot started: DiscordTicketBot#1234
-2024-01-15 10:30:01 | INFO     | __main__ | 🔁 Registered 2 persistent view(s)
-2024-01-15 10:30:02 | INFO     | __main__ | ✅ Synced 15 slash command(s)
-```
-
-### File
-
-Add to `main.py` before running the bot:
-
-```python
-import logging
-from logging.handlers import RotatingFileHandler
-
-file_handler = RotatingFileHandler(
-    "discord_ticket_bot.log",
-    maxBytes=5 * 1024 * 1024,  # 5 MB
-    backupCount=5,
-    encoding="utf-8"
-)
-file_handler.setLevel(logging.INFO)
-file_handler.setFormatter(logging.Formatter(
-    "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S"
-))
-
-logging.getLogger().addHandler(file_handler)
-```
-
-### Log Levels
-
-| Level | Description |
-|-------|-------------|
-| `DEBUG` | Detailed debug info |
-| `INFO` | General information |
-| `WARNING` | Non-critical warnings |
-| `ERROR` | Errors affecting operation |
-| `CRITICAL` | Critical errors |
 
 ---
 
@@ -424,14 +296,13 @@ DiscordTicketBot/
 ├── main.py              # Entry point, bot logic
 ├── config.py            # Configuration via .env
 ├── views.py             # Discord UI (buttons, modals)
-├── database.py          # PostgreSQL connection and methods
+├── database.py          # SQLite connection and methods
 ├── models.py            # Database dataclasses
 ├── commands.py          # Slash commands /ticket
 ├── transcript.py        # HTML transcript generator
 ├── utils.py             # Utilities (rate limiting)
 ├── requirements.txt     # Dependencies
 ├── Dockerfile           # Docker image
-├── docker-compose.yml   # Docker Compose with PostgreSQL
 └── .env.example         # Example configuration
 ```
 
@@ -442,8 +313,9 @@ DiscordTicketBot/
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `DISCORD_TOKEN` | ✅ | Discord bot token |
-| `DATABASE_URL` | ✅ | PostgreSQL connection string |
+| `DATABASE_PATH` | ❌ | Database path (default: `data/tickets.db`) |
 | `COMMAND_PREFIX` | ❌ | Command prefix (default: `!`) |
+| `PROXY_URL` | ❌ | Proxy for bypassing blocks |
 
 ---
 
@@ -452,7 +324,7 @@ DiscordTicketBot/
 - Parameterized SQL queries (SQL injection protection)
 - Rate limiting prevents ticket spam
 - Text sanitization removes dangerous characters
-- Bot token and DB data stored in .env (don't commit!)
+- Bot token stored in .env (don't commit!)
 
 ---
 
@@ -460,10 +332,10 @@ DiscordTicketBot/
 
 | Problem | Solution |
 |---------|----------|
-| Bot can't connect to DB | Check DATABASE_URL and PostgreSQL running |
+| Bot won't start | Check DISCORD_TOKEN in .env |
 | Buttons don't work after restart | Check bot permissions: Manage Channels |
 | "Missing Access" error | Bot role must be above moderator roles |
-| Transcript not sent | Check transcript channel exists and bot has permissions |
+| Transcript not sent | Check transcript channel exists |
 
 ---
 
@@ -491,6 +363,7 @@ MIT License — use freely, please credit the author.
 - **斜杠命令** — 通过 `/ticket` 完全控制
 - **灵活字段设置** — 显示/隐藏创建者、编号、系统
 - **频率限制** — 防止工单刷屏
+- **SQLite** — 无需单独的数据库服务器
 
 ---
 
@@ -504,92 +377,30 @@ MIT License — use freely, please credit the author.
    - Scopes: `bot`, `applications.commands`
    - Permissions: `Manage Channels`, `View Channels`, `Send Messages`, `Embed Links`, `Read Message History`, `Attach Files`, `Manage Roles`
 
-### 2. 运行
+### 2. 本地运行
 
 ```bash
-# 克隆仓库
-git clone https://github.com/your-repo/DiscordTicketBot.git
+git clone https://github.com/your-username/DiscordTicketBot.git
 cd DiscordTicketBot
 
-# 复制配置
 cp .env.example .env
+# 编辑 .env — 添加 DISCORD_TOKEN
 
-# 编辑 .env — 填写 DISCORD_TOKEN 和 DATABASE_URL
-
-# 安装依赖
 pip install -r requirements.txt
-
-# 运行
 python main.py
 ```
 
-### 3. 配置工单系统
-
-启动机器人后，使用斜杠命令：
-
-```
-/ticket create name:支持
-/ticket set-channel name:支持 channel:#工单
-/ticket set-roles name:支持 roles:@管理员 @版主
-/ticket publish name:支持
-```
-
----
-
-## 🐳 Docker
+### 3. Docker 运行
 
 ```bash
-cp .env.example .env
-nano .env
-docker-compose up -d --build
+git clone https://github.com/your-username/DiscordTicketBot.git
+cd DiscordTicketBot
+
+echo "DISCORD_TOKEN=your_token" > .env
+
+docker build -t discord-ticket-bot .
+docker run -d --name ticket-bot -v ticket-data:/app/data discord-ticket-bot
 ```
-
----
-
-## 📝 日志配置
-
-日志默认输出到控制台。您可以配置文件输出或使用外部服务。
-
-### 控制台（默认）
-
-```
-2024-01-15 10:30:00 | INFO     | __main__ | ✅ 机器人已启动: DiscordTicketBot#1234
-2024-01-15 10:30:01 | INFO     | __main__ | 🔁 已注册 2 个持久化视图
-2024-01-15 10:30:02 | INFO     | __main__ | ✅ 已同步 15 个斜杠命令
-```
-
-### 文件
-
-在运行机器人前，在 `main.py` 中添加：
-
-```python
-import logging
-from logging.handlers import RotatingFileHandler
-
-file_handler = RotatingFileHandler(
-    "discord_ticket_bot.log",
-    maxBytes=5 * 1024 * 1024,  # 5 MB
-    backupCount=5,
-    encoding="utf-8"
-)
-file_handler.setLevel(logging.INFO)
-file_handler.setFormatter(logging.Formatter(
-    "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S"
-))
-
-logging.getLogger().addHandler(file_handler)
-```
-
-### 日志级别
-
-| 级别 | 描述 |
-|------|------|
-| `DEBUG` | 详细调试信息 |
-| `INFO` | 一般信息 |
-| `WARNING` | 非关键警告 |
-| `ERROR` | 影响运行的错误 |
-| `CRITICAL` | 严重错误 |
 
 ---
 
@@ -613,53 +424,13 @@ logging.getLogger().addHandler(file_handler)
 
 ---
 
-## 📁 项目结构
-
-```
-DiscordTicketBot/
-├── main.py              # 入口点，机器人逻辑
-├── config.py            # 通过 .env 配置
-├── views.py             # Discord UI（按钮、模态框）
-├── database.py          # PostgreSQL 连接和方法
-├── models.py            # 数据库数据类
-├── commands.py          # 斜杠命令 /ticket
-├── transcript.py        # HTML 记录生成器
-├── utils.py             # 工具（频率限制）
-├── requirements.txt     # 依赖
-├── Dockerfile           # Docker 镜像
-├── docker-compose.yml   # 包含 PostgreSQL 的 Docker Compose
-└── .env.example         # 配置示例
-```
-
----
-
 ## 🔧 环境变量
 
 | 变量 | 必需 | 描述 |
 |------|------|------|
 | `DISCORD_TOKEN` | ✅ | Discord 机器人令牌 |
-| `DATABASE_URL` | ✅ | PostgreSQL 连接字符串 |
+| `DATABASE_PATH` | ❌ | 数据库路径（默认：`data/tickets.db`）|
 | `COMMAND_PREFIX` | ❌ | 命令前缀（默认：`!`）|
-
----
-
-## 🔒 安全
-
-- 参数化 SQL 查询（防止 SQL 注入）
-- 频率限制防止工单刷屏
-- 文本清理移除危险字符
-- 机器人和数据库令牌存储在 .env 中（请勿提交！）
-
----
-
-## 🛠️ 故障排除
-
-| 问题 | 解决方案 |
-|------|----------|
-| 机器人无法连接数据库 | 检查 DATABASE_URL 和 PostgreSQL 是否运行 |
-| 重启后按钮不工作 | 检查机器人权限：Manage Channels |
-| "Missing Access" 错误 | 机器人角色必须在管理员角色之上 |
-| 记录未发送 | 检查记录频道存在且机器人有权限 |
 
 ---
 

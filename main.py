@@ -65,8 +65,8 @@ class TicketBot(commands.Bot):
         """Инициализация БД, регистрация persistent views, загрузка команд."""
         logger.info("🚀 Запуск бота...")
 
-        # Подключаемся к БД
-        await database.init(Config.DATABASE_URL)
+        # Подключаемся к БД (SQLite)
+        await database.init(Config.DATABASE_PATH)
 
         # Загружаем все системы и регистрируем persistent views
         # чтобы кнопки работали после рестарта

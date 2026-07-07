@@ -212,9 +212,17 @@ class TicketBot(commands.Bot):
 
         close_view = TicketCloseView(self, system_id, interaction.user.id)
 
+        # Собираем упоминания: пользователь + роли модераторов
+        mentions = [interaction.user.mention]
+        for role_id in system.admin_role_ids:
+            role = guild.get_role(role_id)
+            if role:
+                mentions.append(role.mention)
+        content = " ".join(mentions)
+
         try:
             msg = await ticket_channel.send(
-                content=interaction.user.mention,
+                content=content,
                 embed=embed,
                 view=close_view,
             )

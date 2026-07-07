@@ -14,9 +14,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libffi-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Create data directory for SQLite database
-RUN mkdir -p /app/data
-
 # Copy requirements and install dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
@@ -31,9 +28,11 @@ COPY transcript.py .
 COPY config.py .
 COPY utils.py .
 
-# Create non-root user for security
+# Create non-root user for security AND data directory with correct permissions
 RUN useradd --create-home --shell /bin/bash botuser \
+    && mkdir -p /app/data \
     && chown -R botuser:botuser /app
+
 USER botuser
 
 # Environment variables
